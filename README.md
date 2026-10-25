@@ -1,7 +1,8 @@
 # Gold Tracker (India)
 
 Android app that shows estimated Indian gold prices (24K / 22K / 18K, per gram and per 10 g)
-and sends a notification when the price crosses an upper or lower limit you set.
+with the rise/fall versus the previous close, a 24K trend chart (1D / 1W / 1M / 3M / 6M),
+and a notification when the price crosses an upper or lower limit you set.
 
 ## How the price is calculated
 
@@ -9,6 +10,14 @@ International spot (USD/oz, from gold-api.com) × USD/INR (open.er-api.com) ÷ 3
 then + import duty (default 6%) + optional 3% GST + your own adjustment %.
 If the live source fails it falls back to a daily XAU/INR rate.
 This is an estimate; jeweller and MCX rates differ, so tune the adjustment % to match your local rate.
+
+## Trend and daily change
+
+1W to 6M charts and the previous close come from the daily XAU/INR archive of
+[currency-api](https://github.com/fawazahmed0/exchange-api) (one snapshot per day, around 05:30 IST).
+Past days are cached on the phone so each is downloaded once; 3M and 6M use every 2nd / 3rd day.
+There is no free intraday Indian source, so the 1D chart is built from the app's own price checks,
+which run in the background at the chosen interval even when alerts are off.
 
 ## Alerts
 

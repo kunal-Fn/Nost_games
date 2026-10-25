@@ -10,11 +10,14 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.rememberScrollState
@@ -43,6 +46,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
@@ -50,6 +55,7 @@ import androidx.core.content.ContextCompat
 import kotlinx.coroutines.launch
 import java.text.DateFormat
 import java.util.Date
+import kotlin.math.abs
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -57,7 +63,8 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         Alerts.createChannel(this)
         val prefs = Prefs(this)
-        if (prefs.alertsEnabled) PriceCheckWorker.schedule(this, prefs.intervalMinutes)
+        // Runs even with alerts off: these checks also build the 1D chart.
+        PriceCheckWorker.schedule(this, prefs.intervalMinutes)
 
         setContent {
             MaterialTheme(colorScheme = lightColorScheme(primary = Color(0xFF8A6D12))) {
@@ -79,6 +86,11 @@ private fun GoldScreen(prefs: Prefs) {
     var source by remember { mutableStateOf(prefs.lastSource) }
     var loading by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
+
+    var prevClose by remember { mutableStateOf<Double?>(null) }
+    var range by remember { mutableStateOf(TrendRange.WEEK) }
+    var trend by remember { mutableStateOf<List<PricePoint>>(emptyList()) }
+    var trendLoading by remember { mutableStateOf(false) }
 
     var priceSettings by remember { mutableStateOf(prefs.priceSettings) }
     var dutyText by remember { mutableStateOf(priceSettings.dutyPercent.toString()) }
@@ -113,6 +125,13 @@ private fun GoldScreen(prefs: Prefs) {
 
     LaunchedEffect(Unit) {
         if (System.currentTimeMillis() - prefs.lastUpdated > 5 * 60_000) refresh()
+        prevClose = History.previousClose(context)
+    }
+
+    LaunchedEffect(range, updated) {
+        trendLoading = true
+        trend = History.load(context, range)
+        trendLoading = false
     }
 
     Column(
@@ -131,9 +150,10 @@ private fun GoldScreen(prefs: Prefs) {
                     Text(if (loading) "Loading…" else "No price yet. Tap Refresh.")
                 } else {
                     val prices = GoldRepository.toIndianPrices(spot, priceSettings)
-                    PriceRow("24K", prices.k24)
-                    PriceRow("22K", prices.k22)
-                    PriceRow("18K", prices.k18)
+                    val prev = prevClose?.let { GoldRepository.toIndianPrices(it, priceSettings) }
+                    PriceRow("24K", prices.k24, prev?.k24)
+                    PriceRow("22K", prices.k22, prev?.k22)
+                    PriceRow("18K", prices.k18, prev?.k18)
                     Text(
                         "Updated ${DateFormat.getDateTimeInstance(DateFormat.MEDIUM, DateFormat.SHORT).format(Date(updated))}\nSource: $source",
                         style = MaterialTheme.typography.bodySmall,
@@ -142,6 +162,53 @@ private fun GoldScreen(prefs: Prefs) {
                 error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
                 Button(onClick = { refresh() }, enabled = !loading) {
                     Text(if (loading) "Refreshing…" else "Refresh")
+                }
+            }
+        }
+
+        Card(Modifier.fillMaxWidth()) {
+            Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text("24K trend (₹ per 10 g)", style = MaterialTheme.typography.titleMedium)
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                    TrendRange.entries.forEach { r ->
+                        val pad = PaddingValues(0.dp)
+                        if (r == range) {
+                            Button(onClick = {}, Modifier.weight(1f), contentPadding = pad) { Text(r.label) }
+                        } else {
+                            OutlinedButton(onClick = { range = r }, Modifier.weight(1f), contentPadding = pad) { Text(r.label) }
+                        }
+                    }
+                }
+                // End the daily series at the live price so the chart and the card agree.
+                val points = if (range != TrendRange.DAY && spot > 0 && trend.isNotEmpty() && updated > trend.last().time) {
+                    trend + PricePoint(updated, spot)
+                } else {
+                    trend
+                }
+                val values = points.map { it.time to GoldRepository.toIndianPrices(it.spotInrPerGram, priceSettings).k24 * 10 }
+                when {
+                    trendLoading && values.isEmpty() -> Text("Loading…")
+                    values.size < 2 -> Text(
+                        if (range == TrendRange.DAY) "The day chart fills in as the app checks the price in the background."
+                        else "No history available right now. Check your connection.",
+                        style = MaterialTheme.typography.bodySmall,
+                    )
+                    else -> {
+                        val first = values.first().second
+                        val last = values.last().second
+                        ChangeText(last - first, first, "over ${range.label}")
+                        TrendChart(values, rising = last >= first)
+                        val dateFormat = if (range == TrendRange.DAY) DateFormat.getTimeInstance(DateFormat.SHORT)
+                            else DateFormat.getDateInstance(DateFormat.MEDIUM)
+                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                            Text(dateFormat.format(Date(values.first().first)), style = MaterialTheme.typography.bodySmall)
+                            Text(dateFormat.format(Date(values.last().first)), style = MaterialTheme.typography.bodySmall)
+                        }
+                        Text(
+                            "High ${formatInr(values.maxOf { it.second })} · Low ${formatInr(values.minOf { it.second })}",
+                            style = MaterialTheme.typography.bodySmall,
+                        )
+                    }
                 }
             }
         }
@@ -175,11 +242,9 @@ private fun GoldScreen(prefs: Prefs) {
                         ) {
                             permissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
                         }
-                        PriceCheckWorker.schedule(context, interval)
                         Alerts.check(context, prefs)
-                    } else {
-                        PriceCheckWorker.cancel(context)
                     }
+                    PriceCheckWorker.schedule(context, interval)
                     error = null
                     Toast.makeText(context, "Alert saved", Toast.LENGTH_SHORT).show()
                 }) {
@@ -216,14 +281,66 @@ private fun GoldScreen(prefs: Prefs) {
     }
 }
 
+private val RiseColor = Color(0xFF2E7D32)
+private val FallColor = Color(0xFFC62828)
+
 @Composable
-private fun PriceRow(label: String, perGram: Double) {
+private fun PriceRow(label: String, perGram: Double, prevPerGram: Double?) {
     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
         Text(label, style = MaterialTheme.typography.titleLarge)
         Column(horizontalAlignment = Alignment.End) {
             Text("${formatInr(perGram * 10)} / 10 g", style = MaterialTheme.typography.titleMedium)
             Text("${formatInr(perGram)} / g", style = MaterialTheme.typography.bodySmall)
+            if (prevPerGram != null && prevPerGram > 0) {
+                ChangeText((perGram - prevPerGram) * 10, prevPerGram * 10, "vs prev. close")
+            }
         }
+    }
+}
+
+/** e.g. "▲ ₹1,250 (+0.98%) vs prev. close", green for a rise and red for a fall. */
+@Composable
+private fun ChangeText(change: Double, base: Double, suffix: String) {
+    val rising = change >= 0
+    val arrow = if (rising) "▲" else "▼"
+    val sign = if (rising) "+" else "-"
+    val percent = "%.2f".format(abs(change) / base * 100)
+    Text(
+        "$arrow ${formatInr(abs(change))} ($sign$percent%) $suffix",
+        color = if (rising) RiseColor else FallColor,
+        style = MaterialTheme.typography.bodySmall,
+    )
+}
+
+@Composable
+private fun TrendChart(values: List<Pair<Long, Double>>, rising: Boolean) {
+    val color = if (rising) RiseColor else FallColor
+    Canvas(
+        Modifier
+            .fillMaxWidth()
+            .height(180.dp)
+    ) {
+        val inset = 4.dp.toPx()
+        val chartHeight = size.height - 2 * inset
+        val minV = values.minOf { it.second }
+        val spanV = (values.maxOf { it.second } - minV).takeIf { it > 0 } ?: 1.0
+        val t0 = values.first().first
+        val spanT = (values.last().first - t0).coerceAtLeast(1L).toFloat()
+        fun x(t: Long) = (t - t0) / spanT * size.width
+        fun y(v: Double) = inset + chartHeight - ((v - minV) / spanV).toFloat() * chartHeight
+
+        val line = Path()
+        values.forEachIndexed { i, (t, v) ->
+            if (i == 0) line.moveTo(x(t), y(v)) else line.lineTo(x(t), y(v))
+        }
+        val area = Path().apply {
+            addPath(line)
+            lineTo(x(values.last().first), size.height)
+            lineTo(x(t0), size.height)
+            close()
+        }
+        drawPath(area, color.copy(alpha = 0.15f))
+        drawPath(line, color, style = Stroke(width = 2.dp.toPx()))
     }
 }
 

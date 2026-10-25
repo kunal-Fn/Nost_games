@@ -30,9 +30,5 @@ class PriceCheckWorker(context: Context, params: WorkerParameters) : CoroutineWo
             WorkManager.getInstance(context)
                 .enqueueUniquePeriodicWork(WORK_NAME, ExistingPeriodicWorkPolicy.UPDATE, request)
         }
-
-        fun cancel(context: Context) {
-            WorkManager.getInstance(context).cancelUniqueWork(WORK_NAME)
-        }
     }
 }
