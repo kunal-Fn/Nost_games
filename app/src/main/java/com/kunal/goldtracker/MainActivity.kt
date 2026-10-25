@@ -22,6 +22,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawingPadding
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
@@ -91,7 +92,7 @@ private fun GoldScreen(prefs: Prefs) {
     var loading by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
 
-    var prevClose by remember { mutableStateOf<Double?>(null) }
+    var prevClose by remember { mutableDoubleStateOf(prefs.lastPrevClose) }
     var range by remember { mutableStateOf(TrendRange.WEEK) }
     var trend by remember { mutableStateOf<List<PricePoint>>(emptyList()) }
     var trendLoading by remember { mutableStateOf(false) }
@@ -120,6 +121,7 @@ private fun GoldScreen(prefs: Prefs) {
                 spot = prefs.lastSpotInrPerGram
                 updated = prefs.lastUpdated
                 source = prefs.lastSource
+                prevClose = prefs.lastPrevClose
             } catch (e: Exception) {
                 error = "Could not fetch price: ${e.message}"
             }
@@ -129,7 +131,6 @@ private fun GoldScreen(prefs: Prefs) {
 
     LaunchedEffect(Unit) {
         if (System.currentTimeMillis() - prefs.lastUpdated > 5 * 60_000) refresh()
-        prevClose = History.previousClose(context)
     }
 
     LaunchedEffect(range, updated) {
@@ -154,10 +155,11 @@ private fun GoldScreen(prefs: Prefs) {
                     Text(if (loading) "Loading…" else "No price yet. Tap Refresh.")
                 } else {
                     val prices = GoldRepository.toIndianPrices(spot, priceSettings)
-                    val prev = prevClose?.let { GoldRepository.toIndianPrices(it, priceSettings) }
+                    val prev = prevClose.takeIf { it > 0 }?.let { GoldRepository.toIndianPrices(it, priceSettings) }
                     PriceRow("24K", prices.k24, prev?.k24)
                     PriceRow("22K", prices.k22, prev?.k22)
                     PriceRow("18K", prices.k18, prev?.k18)
+                    PriceRow("14K", prices.k14, prev?.k14)
                     Text(
                         "Updated ${DateFormat.getDateTimeInstance(DateFormat.MEDIUM, DateFormat.SHORT).format(Date(updated))}\nSource: $source",
                         style = MaterialTheme.typography.bodySmall,
@@ -214,11 +216,14 @@ private fun GoldScreen(prefs: Prefs) {
             }
         }
 
+        CalculatorCard(spot, priceSettings)
+        HoldingsCard(spot, priceSettings)
+
         Card(Modifier.fillMaxWidth()) {
             Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text("Price alert", style = MaterialTheme.typography.titleMedium)
                 SwitchRow("Notify me when price crosses a limit", alertsOn) { alertsOn = it }
-                OptionRow("Purity", listOf(24 to "24K", 22 to "22K"), karat) { karat = it }
+                OptionRow("Purity", listOf(24 to "24K", 22 to "22K", 18 to "18K", 14 to "14K"), karat) { karat = it }
                 NumberField("Alert above (₹ per 10 g)", upperText) { upperText = it }
                 NumberField("Alert below (₹ per 10 g)", lowerText) { lowerText = it }
                 OptionRow("Check every", listOf(15 to "15 min", 30 to "30 min", 60 to "1 hr"), interval) { interval = it }
@@ -258,7 +263,7 @@ private fun GoldScreen(prefs: Prefs) {
             Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text("Price calculation", style = MaterialTheme.typography.titleMedium)
                 Text(
-                    "Estimated from the international spot price plus import duty and GST. " +
+                    "Estimated from the international spot price plus import duty (and GST if on). " +
                         "Jeweller and city rates differ, so use Adjustment % to match the rate you see locally.",
                     style = MaterialTheme.typography.bodySmall,
                 )
@@ -267,12 +272,13 @@ private fun GoldScreen(prefs: Prefs) {
                 SwitchRow("Include 3% GST", includeGst) { includeGst = it }
                 OutlinedButton(onClick = {
                     val newSettings = PriceSettings(
-                        dutyPercent = parseNumber(dutyText) ?: 6.0,
+                        dutyPercent = parseNumber(dutyText) ?: 15.0,
                         adjustPercent = parseNumber(adjustText) ?: 0.0,
                         includeGst = includeGst,
                     )
                     prefs.priceSettings = newSettings
                     priceSettings = newSettings
+                    PriceWidget.updateAll(context)
                     Toast.makeText(context, "Settings saved", Toast.LENGTH_SHORT).show()
                 }) {
                     Text("Save settings")
@@ -301,7 +307,7 @@ private fun PriceRow(label: String, perGram: Double, prevPerGram: Double?) {
 
 /** e.g. "▲ ₹1,250 (+0.98%) vs prev. close", green for a rise and red for a fall. */
 @Composable
-private fun ChangeText(change: Double, base: Double, suffix: String) {
+internal fun ChangeText(change: Double, base: Double, suffix: String) {
     val rising = change >= 0
     val arrow = if (rising) "▲" else "▼"
     val sign = if (rising) "+" else "-"
@@ -395,10 +401,10 @@ private fun SwitchRow(text: String, checked: Boolean, onChange: (Boolean) -> Uni
 }
 
 @Composable
-private fun OptionRow(label: String, options: List<Pair<Int, String>>, selected: Int, onSelect: (Int) -> Unit) {
+internal fun OptionRow(label: String, options: List<Pair<Int, String>>, selected: Int, onSelect: (Int) -> Unit) {
     Column {
         Text(label, style = MaterialTheme.typography.labelLarge)
-        Row(verticalAlignment = Alignment.CenterVertically) {
+        Row(Modifier.horizontalScroll(rememberScrollState()), verticalAlignment = Alignment.CenterVertically) {
             options.forEach { (value, text) ->
                 RadioButton(selected = value == selected, onClick = { onSelect(value) })
                 Text(text, Modifier.padding(end = 12.dp))
@@ -408,7 +414,7 @@ private fun OptionRow(label: String, options: List<Pair<Int, String>>, selected:
 }
 
 @Composable
-private fun NumberField(label: String, value: String, onChange: (String) -> Unit) {
+internal fun NumberField(label: String, value: String, onChange: (String) -> Unit) {
     OutlinedTextField(
         value = value,
         onValueChange = onChange,
@@ -419,6 +425,6 @@ private fun NumberField(label: String, value: String, onChange: (String) -> Unit
     )
 }
 
-private fun parseNumber(text: String): Double? = text.replace(",", "").trim().toDoubleOrNull()
+internal fun parseNumber(text: String): Double? = text.replace(",", "").trim().toDoubleOrNull()
 
 private fun limitText(value: Double): String = if (value > 0) "%.0f".format(value) else ""

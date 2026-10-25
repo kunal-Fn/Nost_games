@@ -1,13 +1,15 @@
 # Gold Tracker (India)
 
-Android app that shows estimated Indian gold prices (24K / 22K / 18K, per gram and per 10 g)
+Android app that shows estimated Indian gold prices (24K / 22K / 18K / 14K, per gram and per 10 g)
 with the rise/fall versus the previous close, a 24K trend chart (1D / 1W / 1M / 3M / 6M),
-and a notification when the price crosses an upper or lower limit you set.
+a notification when the price crosses an upper or lower limit you set,
+a home-screen widget, a jewellery price calculator and a "My gold" holdings tracker.
 
 ## How the price is calculated
 
 International spot (USD/oz, from gold-api.com) × USD/INR (open.er-api.com) ÷ 31.1035 g,
-then + import duty (default 6%) + optional 3% GST + your own adjustment %.
+then + import duty (default 15%: 10% BCD + 5% AIDC since 13 May 2026) + optional 3% GST
+(off by default, as jewellers and IBJA quote rates before GST) + your own adjustment %.
 If the live source fails it falls back to a daily XAU/INR rate.
 This is an estimate; jeweller and MCX rates differ, so tune the adjustment % to match your local rate.
 
@@ -18,6 +20,17 @@ This is an estimate; jeweller and MCX rates differ, so tune the adjustment % to 
 Past days are cached on the phone so each is downloaded once; 3M and 6M use every 2nd / 3rd day.
 There is no free intraday Indian source, so the 1D chart is built from the app's own price checks,
 which run in the background at the chosen interval even when alerts are off.
+
+## Calculator and My gold
+
+The calculator estimates a jewellery bill: weight × rate + making charges %, plus 3% GST on both.
+My gold values what you own at today's rate (before GST) and shows profit/loss against what you paid.
+Holdings are stored only on the phone.
+
+## Widget
+
+Long-press the home screen → Widgets → Gold Tracker. It shows the 24K rate per 10 g and the change
+from the previous close, and updates after every background check.
 
 ## Alerts
 

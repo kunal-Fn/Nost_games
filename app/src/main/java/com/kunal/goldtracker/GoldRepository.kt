@@ -15,10 +15,11 @@ internal const val GRAMS_PER_TROY_OUNCE = 31.1034768
 data class SpotPrice(val inrPerGram: Double, val source: String)
 
 /** Estimated Indian prices in rupees per gram. */
-data class GoldPrices(val k24: Double, val k22: Double, val k18: Double) {
+data class GoldPrices(val k24: Double, val k22: Double, val k18: Double, val k14: Double) {
     fun forKarat(karat: Int): Double = when (karat) {
         22 -> k22
         18 -> k18
+        14 -> k14
         else -> k24
     }
 }
@@ -29,14 +30,16 @@ object GoldRepository {
     suspend fun refresh(context: Context, prefs: Prefs) = withContext(Dispatchers.IO) {
         val spot = fetchSpot()
         prefs.saveSpot(spot)
+        History.previousClose(context)?.let { prefs.lastPrevClose = it }
         History.recordSample(context, spot.inrPerGram)
         Alerts.check(context, prefs)
+        PriceWidget.updateAll(context)
     }
 
     fun toIndianPrices(spotInrPerGram: Double, s: PriceSettings): GoldPrices {
         var k24 = spotInrPerGram * (1 + s.dutyPercent / 100) * (1 + s.adjustPercent / 100)
         if (s.includeGst) k24 *= 1.03
-        return GoldPrices(k24 = k24, k22 = k24 * 22 / 24, k18 = k24 * 18 / 24)
+        return GoldPrices(k24 = k24, k22 = k24 * 22 / 24, k18 = k24 * 18 / 24, k14 = k24 * 14 / 24)
     }
 
     private fun fetchSpot(): SpotPrice {

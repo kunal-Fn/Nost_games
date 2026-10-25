@@ -39,12 +39,13 @@ class Prefs(context: Context) {
         get() = sp.getBoolean("lower_fired", false)
         set(v) = sp.edit { putBoolean("lower_fired", v) }
 
-    // How spot is turned into an Indian retail estimate. Basic customs duty 5% + AIDC 1% = 6%.
+    // How spot is turned into an Indian rate. Duty is 10% BCD + 5% AIDC since 13 May 2026.
+    // GST is off by default because jewellers and IBJA quote rates before GST.
     var priceSettings: PriceSettings
         get() = PriceSettings(
-            dutyPercent = getDouble("duty_percent", 6.0),
+            dutyPercent = getDouble("duty_percent", 15.0),
             adjustPercent = getDouble("adjust_percent", 0.0),
-            includeGst = sp.getBoolean("include_gst", true),
+            includeGst = sp.getBoolean("include_gst", false),
         )
         set(v) {
             putDouble("duty_percent", v.dutyPercent)
@@ -56,6 +57,9 @@ class Prefs(context: Context) {
     val lastSpotInrPerGram: Double get() = getDouble("last_spot", 0.0)
     val lastUpdated: Long get() = sp.getLong("last_updated", 0L)
     val lastSource: String get() = sp.getString("last_source", "") ?: ""
+    var lastPrevClose: Double
+        get() = getDouble("last_prev_close", 0.0)
+        set(v) = putDouble("last_prev_close", v)
 
     fun saveSpot(spot: SpotPrice) {
         putDouble("last_spot", spot.inrPerGram)
