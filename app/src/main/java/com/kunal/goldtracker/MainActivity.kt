@@ -11,6 +11,8 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -45,9 +47,11 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
@@ -194,12 +198,9 @@ private fun GoldScreen(prefs: Prefs) {
                         style = MaterialTheme.typography.bodySmall,
                     )
                     else -> {
-                        val first = values.first().second
-                        val last = values.last().second
-                        ChangeText(last - first, first, "over ${range.label}")
-                        TrendChart(values, rising = last >= first)
                         val dateFormat = if (range == TrendRange.DAY) DateFormat.getTimeInstance(DateFormat.SHORT)
                             else DateFormat.getDateInstance(DateFormat.MEDIUM)
+                        TrendChart(values, range.label, dateFormat)
                         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                             Text(dateFormat.format(Date(values.first().first)), style = MaterialTheme.typography.bodySmall)
                             Text(dateFormat.format(Date(values.last().first)), style = MaterialTheme.typography.bodySmall)
@@ -312,20 +313,54 @@ private fun ChangeText(change: Double, base: Double, suffix: String) {
     )
 }
 
+/** Line chart; tap or slide sideways to put a marker on a point and read its price. */
 @Composable
-private fun TrendChart(values: List<Pair<Long, Double>>, rising: Boolean) {
-    val color = if (rising) RiseColor else FallColor
+private fun TrendChart(values: List<Pair<Long, Double>>, periodLabel: String, dateFormat: DateFormat) {
+    var selected by remember(values) { mutableStateOf<Int?>(null) }
+    val first = values.first().second
+    val last = values.last().second
+    val color = if (last >= first) RiseColor else FallColor
+    val t0 = values.first().first
+    val spanT = (values.last().first - t0).coerceAtLeast(1L).toFloat()
+
+    // Two lines in both states so the chart doesn't jump while dragging.
+    val point = selected?.let { values[it] }
+    if (point == null) {
+        ChangeText(last - first, first, "over $periodLabel")
+        Text("Tap or slide on the chart to see prices", style = MaterialTheme.typography.bodySmall)
+    } else {
+        Text(
+            "${formatInr(point.second)} · ${dateFormat.format(Date(point.first))}",
+            style = MaterialTheme.typography.titleSmall,
+        )
+        ChangeText(point.second - first, first, "from start of $periodLabel")
+    }
+
+    fun nearestIndex(xPx: Float, widthPx: Int): Int {
+        val t = t0 + (xPx / widthPx).coerceIn(0f, 1f) * spanT
+        return values.indices.minBy { abs(values[it].first - t) }
+    }
+
     Canvas(
         Modifier
             .fillMaxWidth()
             .height(180.dp)
+            .pointerInput(values) {
+                detectTapGestures { selected = nearestIndex(it.x, size.width) }
+            }
+            .pointerInput(values) {
+                detectHorizontalDragGestures(
+                    onDragStart = { selected = nearestIndex(it.x, size.width) },
+                ) { change, _ ->
+                    change.consume()
+                    selected = nearestIndex(change.position.x, size.width)
+                }
+            }
     ) {
         val inset = 4.dp.toPx()
         val chartHeight = size.height - 2 * inset
         val minV = values.minOf { it.second }
         val spanV = (values.maxOf { it.second } - minV).takeIf { it > 0 } ?: 1.0
-        val t0 = values.first().first
-        val spanT = (values.last().first - t0).coerceAtLeast(1L).toFloat()
         fun x(t: Long) = (t - t0) / spanT * size.width
         fun y(v: Double) = inset + chartHeight - ((v - minV) / spanV).toFloat() * chartHeight
 
@@ -341,6 +376,13 @@ private fun TrendChart(values: List<Pair<Long, Double>>, rising: Boolean) {
         }
         drawPath(area, color.copy(alpha = 0.15f))
         drawPath(line, color, style = Stroke(width = 2.dp.toPx()))
+
+        point?.let { (t, v) ->
+            val px = x(t)
+            drawLine(Color.Gray, Offset(px, 0f), Offset(px, size.height), strokeWidth = 1.dp.toPx())
+            drawCircle(Color.White, radius = 6.dp.toPx(), center = Offset(px, y(v)))
+            drawCircle(color, radius = 4.dp.toPx(), center = Offset(px, y(v)))
+        }
     }
 }
 
