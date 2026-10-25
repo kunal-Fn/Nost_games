@@ -11,7 +11,7 @@ import java.text.DateFormat
 import java.util.Date
 import kotlin.math.abs
 
-/** Home-screen widget showing the 24K rate per 10 g and the change from the previous close. */
+/** Home-screen widget showing the chosen karat's rate per 10 g and the change from the previous close. */
 class PriceWidget : AppWidgetProvider() {
 
     override fun onUpdate(context: Context, manager: AppWidgetManager, ids: IntArray) {
@@ -34,6 +34,8 @@ class PriceWidget : AppWidgetProvider() {
                 PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
             )
             views.setOnClickPendingIntent(R.id.widget_root, openApp)
+            val karat = prefs.widgetKarat
+            views.setTextViewText(R.id.widget_title, "${karat}K gold · 10 g")
 
             val spot = prefs.lastSpotInrPerGram
             if (spot <= 0) {
@@ -44,12 +46,12 @@ class PriceWidget : AppWidgetProvider() {
             }
 
             val settings = prefs.priceSettings
-            val per10g = GoldRepository.toIndianPrices(spot, settings).k24 * 10
+            val per10g = GoldRepository.toIndianPrices(spot, settings).forKarat(karat) * 10
             views.setTextViewText(R.id.widget_price, formatInr(per10g))
 
             val prevSpot = prefs.lastPrevClose
             if (prevSpot > 0) {
-                val prev10g = GoldRepository.toIndianPrices(prevSpot, settings).k24 * 10
+                val prev10g = GoldRepository.toIndianPrices(prevSpot, settings).forKarat(karat) * 10
                 val change = per10g - prev10g
                 val rising = change >= 0
                 val text = "${if (rising) "▲" else "▼"} ${formatInr(abs(change))} " +

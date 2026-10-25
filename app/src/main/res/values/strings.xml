@@ -1,5 +1,5 @@
 <resources>
     <string name="app_name">Gold Tracker</string>
     <string name="widget_title">24K gold · 10 g</string>
-    <string name="widget_description">Today\'s 24K gold rate and change</string>
+    <string name="widget_description">Today\'s gold rate and change</string>
 </resources>

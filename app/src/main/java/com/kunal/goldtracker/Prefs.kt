@@ -27,6 +27,12 @@ class Prefs(context: Context) {
     var alertKarat: Int
         get() = sp.getInt("alert_karat", 24)
         set(v) = sp.edit { putInt("alert_karat", v) }
+    var trendKarat: Int
+        get() = sp.getInt("trend_karat", 24)
+        set(v) = sp.edit { putInt("trend_karat", v) }
+    var widgetKarat: Int
+        get() = sp.getInt("widget_karat", 24)
+        set(v) = sp.edit { putInt("widget_karat", v) }
     var intervalMinutes: Int
         get() = sp.getInt("interval_minutes", 30)
         set(v) = sp.edit { putInt("interval_minutes", v) }

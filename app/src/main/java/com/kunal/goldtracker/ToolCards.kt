@@ -24,7 +24,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 
-private val KaratOptions = listOf(24 to "24K", 22 to "22K", 18 to "18K", 14 to "14K")
+internal val KaratOptions = listOf(24 to "24K", 22 to "22K", 18 to "18K", 14 to "14K")
 
 // Rate per gram before GST: GST is charged on the bill, and isn't part of what gold is worth.
 private fun ratePerGram(spot: Double, settings: PriceSettings, karat: Int): Double =

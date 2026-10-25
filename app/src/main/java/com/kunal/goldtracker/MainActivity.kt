@@ -106,6 +106,8 @@ private fun GoldScreen(prefs: Prefs) {
     var upperText by remember { mutableStateOf(limitText(prefs.upperLimit)) }
     var lowerText by remember { mutableStateOf(limitText(prefs.lowerLimit)) }
     var karat by remember { mutableIntStateOf(prefs.alertKarat) }
+    var trendKarat by remember { mutableIntStateOf(prefs.trendKarat) }
+    var widgetKarat by remember { mutableIntStateOf(prefs.widgetKarat) }
     var interval by remember { mutableIntStateOf(prefs.intervalMinutes) }
 
     val permissionLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
@@ -174,7 +176,11 @@ private fun GoldScreen(prefs: Prefs) {
 
         Card(Modifier.fillMaxWidth()) {
             Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text("24K trend (₹ per 10 g)", style = MaterialTheme.typography.titleMedium)
+                Text("${trendKarat}K trend (₹ per 10 g)", style = MaterialTheme.typography.titleMedium)
+                OptionRow("Purity", KaratOptions, trendKarat) {
+                    trendKarat = it
+                    prefs.trendKarat = it
+                }
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                     TrendRange.entries.forEach { r ->
                         val pad = PaddingValues(0.dp)
@@ -191,7 +197,7 @@ private fun GoldScreen(prefs: Prefs) {
                 } else {
                     trend
                 }
-                val values = points.map { it.time to GoldRepository.toIndianPrices(it.spotInrPerGram, priceSettings).k24 * 10 }
+                val values = points.map { it.time to GoldRepository.toIndianPrices(it.spotInrPerGram, priceSettings).forKarat(trendKarat) * 10 }
                 when {
                     trendLoading && values.isEmpty() -> Text("Loading…")
                     values.size < 2 -> Text(
@@ -221,9 +227,24 @@ private fun GoldScreen(prefs: Prefs) {
 
         Card(Modifier.fillMaxWidth()) {
             Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text("Home-screen widget", style = MaterialTheme.typography.titleMedium)
+                OptionRow("Widget shows", KaratOptions, widgetKarat) {
+                    widgetKarat = it
+                    prefs.widgetKarat = it
+                    PriceWidget.updateAll(context)
+                }
+                Text(
+                    "Add it from your home screen: long-press → Widgets → Gold Tracker.",
+                    style = MaterialTheme.typography.bodySmall,
+                )
+            }
+        }
+
+        Card(Modifier.fillMaxWidth()) {
+            Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text("Price alert", style = MaterialTheme.typography.titleMedium)
                 SwitchRow("Notify me when price crosses a limit", alertsOn) { alertsOn = it }
-                OptionRow("Purity", listOf(24 to "24K", 22 to "22K", 18 to "18K", 14 to "14K"), karat) { karat = it }
+                OptionRow("Purity", KaratOptions, karat) { karat = it }
                 NumberField("Alert above (₹ per 10 g)", upperText) { upperText = it }
                 NumberField("Alert below (₹ per 10 g)", lowerText) { lowerText = it }
                 OptionRow("Check every", listOf(15 to "15 min", 30 to "30 min", 60 to "1 hr"), interval) { interval = it }

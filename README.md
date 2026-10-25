@@ -1,7 +1,7 @@
 # Gold Tracker (India)
 
 Android app that shows estimated Indian gold prices (24K / 22K / 18K / 14K, per gram and per 10 g)
-with the rise/fall versus the previous close, a 24K trend chart (1D / 1W / 1M / 3M / 6M),
+with the rise/fall versus the previous close, a trend chart (1D / 1W / 1M / 3M / 6M, any karat),
 a notification when the price crosses an upper or lower limit you set,
 a home-screen widget, a jewellery price calculator and a "My gold" holdings tracker.
 
@@ -29,7 +29,7 @@ Holdings are stored only on the phone.
 
 ## Widget
 
-Long-press the home screen → Widgets → Gold Tracker. It shows the 24K rate per 10 g and the change
+Long-press the home screen → Widgets → Gold Tracker. It shows the rate per 10 g for the karat you pick in the app and the change
 from the previous close, and updates after every background check.
 
 ## Alerts
