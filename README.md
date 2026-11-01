@@ -8,3 +8,4 @@ and is plain HTML, CSS and JavaScript, so it runs by opening its `index.html`.
 | Game | Folder | Controls |
 | --- | --- | --- |
 | Snake | `games/snake/` | Arrows / WASD / 2 4 6 8, Space or 5 to pause, swipe on phones |
+| Brick Breaker | `games/bricks/` | Arrows / A D / 4 6, 2 or Up to launch, Space or 5 to pause, drag on phones |

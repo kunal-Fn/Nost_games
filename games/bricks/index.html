@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+  <meta name="theme-color" content="#1d2327">
+  <title>Brick Breaker</title>
+  <link rel="stylesheet" href="../shared/phone.css">
+</head>
+<body>
+  <main class="phone">
+    <div class="brand">NOST GAMES</div>
+
+    <div class="screen">
+      <div class="hud">
+        <span id="score">0000</span>
+        <span id="status" class="mid">L1 ♥3</span>
+        <span id="best">HI 0000</span>
+      </div>
+      <div class="board">
+        <canvas id="game"></canvas>
+        <div id="overlay" class="overlay"></div>
+      </div>
+    </div>
+
+    <div class="softkeys">
+      <button id="sound" class="softkey" type="button">Sound: on</button>
+      <button id="pause" class="softkey" type="button">Pause</button>
+    </div>
+
+    <!-- 4/6 move the paddle, 2 launches the ball, 5 pauses. -->
+    <div class="keypad">
+      <span></span>
+      <button class="key" data-action="launch" type="button">2<small>▲</small></button>
+      <span></span>
+      <button class="key" data-dir="left" type="button">4<small>◀</small></button>
+      <button class="key" data-action="toggle" type="button">5<small>●</small></button>
+      <button class="key" data-dir="right" type="button">6<small>▶</small></button>
+    </div>
+
+    <p class="help">Arrows / A D / 4 6 to move · 2 or Up to launch · Space or 5 to pause · drag on the screen</p>
+  </main>
+
+  <script src="bricks.js"></script>
+</body>
+</html>

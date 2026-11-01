@@ -1,3 +1,5 @@
+/* Phone frame, LCD screen and keypad shared by every game. */
+
 :root {
   --lcd: #c7f0d8;
   --pixel: #43523d;
@@ -151,4 +153,12 @@ canvas {
   text-align: center;
   font-size: 12px;
   color: #7f8c92;
+}
+
+.hud .mid {
+  letter-spacing: 1px;
+}
+
+.key.blank {
+  visibility: hidden;
 }
