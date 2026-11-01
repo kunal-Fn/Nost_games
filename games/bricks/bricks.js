@@ -355,8 +355,7 @@ document.querySelectorAll(".key").forEach((btn) => {
     e.preventDefault();
     unlockAudio();
     if (dir) held[dir] = true;
-    else if (btn.dataset.action === "launch") launch();
-    else toggle();
+    else launch();
   });
   if (dir) {
     // Release on every way a finger can leave the key, or the paddle keeps sliding.

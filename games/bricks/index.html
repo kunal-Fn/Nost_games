@@ -34,17 +34,18 @@
       <button id="pause" class="softkey" type="button">Pause</button>
     </div>
 
-    <!-- 4/6 move the paddle, 2 launches the ball, 5 pauses. -->
-    <div class="keypad">
+    <!-- 4/6 move the paddle, 2 and 5 launch the ball. 5 doesn't pause here: it sits between
+         4 and 6, so thumbs hit it by accident. Pausing is on the Pause soft key instead. -->
+    <div class="keypad wide">
       <span></span>
       <button class="key" data-action="launch" type="button">2<small>▲</small></button>
       <span></span>
       <button class="key" data-dir="left" type="button">4<small>◀</small></button>
-      <button class="key" data-action="toggle" type="button">5<small>●</small></button>
+      <button class="key" data-action="launch" type="button">5<small>●</small></button>
       <button class="key" data-dir="right" type="button">6<small>▶</small></button>
     </div>
 
-    <p class="help">Arrows / A D / 4 6 to move · 2 or Up to launch · Space or 5 to pause · drag on the screen</p>
+    <p class="help">Arrows / A D / 4 6 to move · 2, 5 or Up to launch · Pause key or Space to pause · drag on the screen</p>
   </main>
 
   <script src="bricks.js"></script>

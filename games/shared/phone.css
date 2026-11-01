@@ -134,6 +134,13 @@ canvas {
   padding: 0 18px;
 }
 
+/* Wider side keys for games where 4 and 6 are held down a lot. */
+.keypad.wide {
+  grid-template-columns: 1.5fr 1fr 1.5fr;
+  gap: 12px;
+  padding: 0 4px;
+}
+
 .key {
   height: 54px;
   border: none;
