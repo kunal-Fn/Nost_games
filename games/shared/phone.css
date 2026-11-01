@@ -44,6 +44,21 @@ body {
   font-size: 13px;
   color: #9aa7ad;
   margin-bottom: 10px;
+  position: relative;
+}
+
+/* Back to the games menu; installed apps on iPhone have no browser back button. */
+.back {
+  position: absolute;
+  left: 4px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #c3ccd0;
+  text-decoration: none;
+  letter-spacing: 0;
+  font-weight: normal;
+  font-size: 13px;
+  padding: 6px 4px;
 }
 
 .screen {
