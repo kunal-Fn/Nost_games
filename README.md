@@ -1,6 +1,6 @@
 # Nost Games
 
-Nostalgic games that run in the browser. Play: https://kunal-fn.github.io/Nost_games/
+Nostalgic games that run in the browser. Play: https://nostgames.com/
 
 Each game lives in its own folder under `games/`
 and is plain HTML, CSS and JavaScript, so it runs by opening its `index.html`.
